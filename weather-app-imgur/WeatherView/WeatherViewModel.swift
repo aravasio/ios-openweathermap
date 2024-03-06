@@ -9,25 +9,15 @@ import UIKit
 import Combine
 
 protocol ConfigurationProviderProtocol {
-    var latitude: String { get }
-    var longitude: String { get }
-    var clientToken: String { get }
+    var endpoint: String { get }
 }
 
 class WeatherViewModel: WeatherViewModelProtocol {
     private var cancellables: Set<AnyCancellable> = []
 
-    var weatherPublisher: PassthroughSubject<CurrentWeather?, Never> = PassthroughSubject()
+    var weatherPublisher: PassthroughSubject<WeatherResult, Never> = PassthroughSubject()
     
     let configurationProvider: ConfigurationProviderProtocol
-    
-    private var currentWeatherEndpoint: String {
-        let baseURL = "https://api.openweathermap.org/data/2.5/weather?"
-        let latitude = "lat=\(configurationProvider.latitude)"
-        let longitude = "&lon=\(configurationProvider.longitude)"
-        let clientToken = "&appid=\(configurationProvider.clientToken)"
-        return baseURL + latitude + longitude + clientToken
-    }
     
     init(configurationProvider: ConfigurationProvider) {
         self.configurationProvider = configurationProvider
@@ -35,11 +25,15 @@ class WeatherViewModel: WeatherViewModelProtocol {
     
     func fetchData() {
         fetchSimpleCurrentWeather(
-            urlString: currentWeatherEndpoint
+            urlString: configurationProvider.endpoint
         ).sink(
-            receiveCompletion: { _ in },
+            receiveCompletion: { completion in
+                if case .failure(let error) = completion {
+                    self.weatherPublisher.send(.failure(error))
+                }
+            },
             receiveValue: { newValue in
-                self.weatherPublisher.send(newValue)
+                self.weatherPublisher.send(.success(newValue))
             }
         ).store(in: &cancellables)
     }

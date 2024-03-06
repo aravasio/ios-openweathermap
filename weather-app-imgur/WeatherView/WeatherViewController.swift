@@ -10,12 +10,12 @@ import SnapKit
 import Combine
 
 protocol WeatherViewModelProtocol {
-    var weatherPublisher: PassthroughSubject<CurrentWeather?, Never> { get }
+    var weatherPublisher: PassthroughSubject<WeatherResult, Never> { get }
     func fetchData()
 }
 
 class WeatherViewController<ViewModel: WeatherViewModelProtocol>: UIViewController {
-    
+    // Main View
     private let locationLabel: UILabel = {
         let label = UILabel()
         label.textAlignment = .center
@@ -66,6 +66,31 @@ class WeatherViewController<ViewModel: WeatherViewModelProtocol>: UIViewControll
         stackView.spacing = 8
         return stackView
     }()
+    
+    // Error View
+    
+    private let errorView: UIView = {
+        let view = UIView()
+        view.isHidden = true
+        return view
+    }()
+
+    private let errorMessageLabel: UILabel = {
+        let label = UILabel()
+        label.text = "Oops! Something happened :("
+        label.textColor = .white
+        label.textAlignment = .center
+        return label
+    }()
+
+    private let retryButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setTitle("Retry", for: .normal)
+        button.tintColor = .white
+        return button
+    }()
+    
+    // Other UI Details
         
     private let scrollView: UIScrollView = {
         let scrollView = UIScrollView()
@@ -93,30 +118,30 @@ class WeatherViewController<ViewModel: WeatherViewModelProtocol>: UIViewControll
         setupViews()
         setupBindings()
         layoutViews()
+        fetchData()
     }
     
     private func setupViews() {
+        setupMainView()
+        setupErrorView()
+        view.addSubview(spinner)
+    }
+    
+    private func setupMainView() {
         mainStackView.addArrangedSubview(locationLabel)
         mainStackView.addArrangedSubview(weatherImageView)
         mainStackView.addArrangedSubview(temperatureValueLabel)
         mainStackView.addArrangedSubview(weatherDescriptionLabel)
         mainStackView.addArrangedSubview(minMaxTempLabel)
         mainStackView.addArrangedSubview(windLabel)
-        
-        scrollView.refreshControl?.addTarget(self, action: #selector(triggerFetchData), for: .valueChanged)
-        
-        view.addSubview(scrollView)
         scrollView.addSubview(mainStackView)
-        
-        setupSpinner()
-        viewModel.fetchData()
+        view.addSubview(scrollView)
     }
     
-    private func setupSpinner() {
-        view.addSubview(spinner)
-        spinner.snp.makeConstraints { make in
-            make.center.equalToSuperview()
-        }
+    private func setupErrorView() {
+        errorView.addSubview(errorMessageLabel)
+        errorView.addSubview(retryButton)
+        view.addSubview(errorView)
     }
     
     private func showSpinner(_ show: Bool) {
@@ -126,30 +151,45 @@ class WeatherViewController<ViewModel: WeatherViewModelProtocol>: UIViewControll
     }
     
     private func setupBindings() {
+        retryButton.addTarget(self, action: #selector(fetchData), for: .touchUpInside)
+        scrollView.refreshControl?.addTarget(self, action: #selector(fetchData), for: .valueChanged)
+
         viewModel.weatherPublisher
             .receive(on: RunLoop.main)
-            .sink { [weak self] weather in
-                guard let self = self,
-                      let weather = weather
-                else { return }
+            .sink { [weak self] result in
+                guard let self else { return }
                 
                 spinner.stopAnimating()
                 scrollView.refreshControl?.endRefreshing()
 
-                locationLabel.text = weather.name
-                temperatureValueLabel.text = "\(weather.temp)°"
-                weatherDescriptionLabel.text = weather.description
-                minMaxTempLabel.text = "Low: \(weather.tempMin)° High: \(weather.tempMax)°"
-                windLabel.text = "Wind: \(weather.windSpeed) m/s (\(weather.windDeg)°)"
-                
-                if let icon = weather.iconUrl {
-                    weatherImageView.loadImage(from: icon)
-                } else {
-                    weatherImageView.image = UIImage(systemName: "xmark.octagon")
+                switch result {
+                case .success(let weather):
+                    redrawView(with: weather)
+                case .failure:
+                    showErrorView(show: true)
                 }
-                
             }
             .store(in: &cancellables)
+    }
+    
+    private func redrawView(with weather: CurrentWeather) {
+        locationLabel.text = weather.name
+        temperatureValueLabel.text = "\(weather.temp)°"
+        weatherDescriptionLabel.text = weather.description
+        minMaxTempLabel.text = "Low: \(weather.tempMin)° High: \(weather.tempMax)°"
+        windLabel.text = "Wind: \(weather.windSpeed) m/s (\(weather.windDeg)°)"
+        
+        if let icon = weather.iconUrl {
+            weatherImageView.loadImage(from: icon)
+        } else {
+            weatherImageView.image = UIImage(systemName: "xmark.octagon")
+        }
+    }
+
+    private func showErrorView(show: Bool) {
+        DispatchQueue.main.async { [weak self] in
+            self?.errorView.isHidden = !show
+        }
     }
     
     private func layoutViews() {
@@ -178,9 +218,29 @@ class WeatherViewController<ViewModel: WeatherViewModelProtocol>: UIViewControll
         weatherImageView.snp.makeConstraints { make in
             make.width.height.equalTo(100)
         }
+        
+        errorView.snp.makeConstraints { make in
+            make.center.equalToSuperview()
+            make.width.equalToSuperview()
+            make.height.equalTo(200)
+        }
+
+        errorMessageLabel.snp.makeConstraints { make in
+            make.top.centerX.equalToSuperview()
+            make.left.right.equalToSuperview().inset(20)
+        }
+
+        retryButton.snp.makeConstraints { make in
+            make.top.equalTo(errorMessageLabel.snp.bottom).offset(20)
+            make.centerX.equalToSuperview()
+        }
+        
+        spinner.snp.makeConstraints { make in
+            make.center.equalToSuperview()
+        }
     }
     
-    @objc private func triggerFetchData() {
+    @objc private func fetchData() {
         spinner.startAnimating()
         viewModel.fetchData()
     }

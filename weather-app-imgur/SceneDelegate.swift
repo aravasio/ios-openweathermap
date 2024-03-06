@@ -15,11 +15,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = (scene as? UIWindowScene) else { return }
         let window = UIWindow(windowScene: windowScene)
 
-        let config = ConfigurationProvider(
-            latitude: "34.0194704",
-            longitude: "-118.4912273",
-            clientToken: "d4277b87ee5c71a468ec0c3dc311a724"
-        )
+        let config = ConfigurationProvider()
         let weatherVM = WeatherViewModel(configurationProvider: config)
         let weatherVC = WeatherViewController(viewModel: weatherVM)
 

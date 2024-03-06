@@ -64,9 +64,9 @@
 		57521FD72B97D94900280B4B /* weather-app-imgur */ = {
 			isa = PBXGroup;
 			children = (
-				57521FFB2B98224E00280B4B /* Config */,
 				57521FD82B97D94900280B4B /* AppDelegate.swift */,
 				57521FDA2B97D94900280B4B /* SceneDelegate.swift */,
+				57521FFB2B98224E00280B4B /* Config */,
 				57521FFA2B98223C00280B4B /* Extensions */,
 				57521FF92B98220F00280B4B /* WeatherView */,
 				57521FE12B97D94A00280B4B /* Assets.xcassets */,

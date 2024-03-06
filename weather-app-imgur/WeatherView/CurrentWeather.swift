@@ -7,6 +7,11 @@
 import Foundation
 import Combine
 
+enum WeatherResult {
+    case success(CurrentWeather)
+    case failure(Error)
+}
+
 struct CurrentWeather: Decodable {
     let name: String
     let temp: Double
