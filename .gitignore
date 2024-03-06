@@ -27,6 +27,8 @@ xcuserdata/
 !default.xcuserdatad
 *.xcsettings
 !default.xcsettings
+*/xcuserdata/*
+
 
 # CocoaPods
 ##
